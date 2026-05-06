@@ -15,7 +15,7 @@ const int MQTT_PORTA = 8883;
 
 const char *MQTT_CLIENT_ID = "eps32_vinicius123";
 
-const char *MQTT_USUARIO = "Vinicius";
+const char *MQTT_USUARIO = "ViniciusM";
 const char *MQTT_SENHA = "Senai@134";
 
 const bool MQTT_USAR_TLS = true; // modo de conexao sem segurança

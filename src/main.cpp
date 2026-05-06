@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <LiquidCrystal_I2C.h>
+#include <LiquidCrystal_I2C>
 #include <ArduinoJson.h>
 #include <Bounce2.h>
 #include "WiFiManager.h"
@@ -12,7 +12,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 
 /**
- * Nome: Vinicius Atanasio de Sousa Alves
+ * Nome: Vinicius Atanasio de Sousa Alves, Vinicius Maniezo Alves, Luiz Gustavo, Fabricio Honorato
  * data: 24/04/2026
  * projeto : conexao MQTT
  * descrição: MQTT 
@@ -25,6 +25,7 @@ String resposta;
 Bounce botaoBoot = Bounce();
 
 const int PINO_LED_RGB = 48;
+const int PINO_LAMPADA = 12;
 const int QUANTIDADE_LEDS = 1;
 const char TOPICO_COMANDO[] = "senai134/consultorio1/esp32/comando";
 const int estadoPino = 12;
@@ -37,6 +38,7 @@ Adafruit_NeoPixel ledRGB(
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem);
 void configurarLedRGB();
+void alterarEstadoLampada(bool estadoLampada);
 void alterarCorLedRGB(int vermelho, int verde, int azul);
 void tratarJsonComando(const String &mensagem);
 
@@ -150,7 +152,7 @@ void tratarJsonComando(const String &mensagem)
     return;
   }
 
-  if (doc["led"].is<JsonObject>())
+  if (doc["led"].is<JsonObject>()) //* Tratamento LED RGB.
   {
     if (!doc["led"]["r"].is<int>() || 
         !doc["led"]["g"].is<int>() || 
@@ -168,6 +170,23 @@ void tratarJsonComando(const String &mensagem)
       alterarCorLedRGB(vermelho, verde, azul);
     }
   }
+
+  if (!doc["lampada"].is<bool>()) //* Tratamento lampada.
+  {
+    debugErro("JSON INVALIDO. use true ou false");
+    return;
+  }
+  else
+  {
+    bool estadoLampada = doc["lampada"].as<bool>();
+
+    alterarEstadoLampada(estadoLampada);
+  }
+}
+
+void alterarEstadoLampada(bool estadoLampada)
+{
+  digitalWrite(PINO_LAMPADA, estadoLampada);
 }
 
 void AtualizarTela()
