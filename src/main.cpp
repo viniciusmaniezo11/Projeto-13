@@ -1,9 +1,14 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "deBugManager.h"
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+
 /**
  * Nome: Vinicius Atanasio de Sousa Alves
  * data: 24/04/2026
@@ -11,6 +16,11 @@
  * descrição: MQTT 
  * versão: 1.0
  */
+
+uint8_t tela = 0;
+String resposta;
+
+const char botaoBoot = 0;
 
 const int PINO_LED_RGB = 48;
 const int QUANTIDADE_LEDS = 1;
@@ -28,14 +38,26 @@ void configurarLedRGB();
 void alterarCorLedRGB(int vermelho, int verde, int azul);
 void tratarJsonComando(const String &mensagem);
 
+void tela1();
+void tela2();
+void tela3();
+void atualizarTela();
+
+const char *URL_API = "https://api.weatherapi.com/v1/current.json?key=c11009a9d28749e6af4164128261604&q=Sao%20Caetano%20do%20Sul&lang=pt";
+
+
 void setup()
 {
+  pinMode(botaoBoot, INPUT_PULLUP);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
   configurarMQTT();
   registrarCallbackMensagem(tratarMensagemRecebida);
   conectarMQTT();
+  lcd.init();
+  lcd.backlight();
+
 }
 
 void loop()
@@ -105,7 +127,9 @@ void tratarJsonComando(const String &mensagem)
 
   if (doc["led"].is<JsonObject>())
   {
-    if (!doc["led"]["r"].is<int>() || !doc["led"]["g"].is<int>() || !doc["led"]["b"].is<int>())
+    if (!doc["led"]["r"].is<int>() || 
+        !doc["led"]["g"].is<int>() || 
+        !doc["led"]["b"].is<int>())
     {
       debugErro("JSON INVALIDO. use led.r, led.g, led.b");
       return;
@@ -119,4 +143,86 @@ void tratarJsonComando(const String &mensagem)
       alterarCorLedRGB(vermelho, verde, azul);
     }
   }
+}
+
+void AtualizarTela()
+{
+  switch (tela)
+  {
+  case 0:
+    tela1();
+    break;
+  case 1:
+    tela2();
+    break;
+  case 2:
+    tela3();
+    break;
+  }
+}
+
+void tela1()
+{
+   JsonDocument doc;
+   DeserializationError erro = deserializeJson(doc, resposta);
+
+  if(!erro)
+  {
+    lcd.setCursor(0,0);
+    lcd.print("Consultório disponível");
+
+    lcd.setCursor(0,2);
+    lcd.print("Doutor Thiago");
+
+    if(doc["location"]["localtime"].is<JsonVariant>())
+    {
+      const char *hora = doc["location"]["localtime"];
+      lcd.setCursor(0,3);
+      lcd.printf("%d:%d", hora);
+    }
+  }
+}
+
+void tela2()
+{
+   JsonDocument doc;
+   DeserializationError erro = deserializeJson(doc, resposta);
+
+   if(!erro)
+   {
+      lcd.setCursor(0,0);
+      lcd.print("Consultório ocupado");
+
+      lcd.setCursor(0,2);
+      lcd.print("Doutor Thiago");
+
+      if(doc["location"]["localtime"].is<JsonVariant>())
+      {
+         const char *hora = doc["location"]["localtime"];
+         lcd.setCursor(0,3);
+         lcd.printf("%d:%d", hora);
+      }
+   }
+}
+
+void tela3()
+{
+   JsonDocument doc;
+   DeserializationError erro = deserializeJson(doc, resposta);
+
+   if(!erro)
+   {
+      lcd.setCursor(0,0);
+      lcd.print("Consultório fechado");
+
+      lcd.setCursor(0,2);
+      lcd.print("Sem doutor");
+
+      if(doc["location"]["localtime"].is<JsonVariant>())
+      {
+         const char *hora = doc["location"]["localtime"];
+         lcd.setCursor(0,3);
+         lcd.printf("%d:%d", hora);
+      }
+   }
 }
