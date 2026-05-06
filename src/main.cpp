@@ -2,9 +2,11 @@
 #include <Adafruit_NeoPixel.h>
 #include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
+#include <Bounce2.h>
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "deBugManager.h"
+
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
@@ -20,7 +22,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 uint8_t tela = 0;
 String resposta;
 
-const char botaoBoot = 0;
+Bounce botaoBoot = Bounce();
 
 const int PINO_LED_RGB = 48;
 const int QUANTIDADE_LEDS = 1;
@@ -48,7 +50,7 @@ const char *URL_API = "https://api.weatherapi.com/v1/current.json?key=c11009a9d2
 
 void setup()
 {
-  pinMode(botaoBoot, INPUT_PULLUP);
+  botaoBoot.attach(0, INPUT_PULLUP);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
@@ -66,11 +68,28 @@ void loop()
   garantirMQTTConectado();
   loopMQTT();
 
-   botaoBoot.update();
+  unsigned long tempo = botaoBoot.previousDuration();
+  unsigned long tempo2 = botaoBoot.currentDuration();
+
+  botaoBoot.update();
   static bool estadoBotaoBoot = 1;
   bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
   static bool houveTroca = false;
 
+  if (botaoBoot.changed()) 
+  {
+    estadoBotaoBoot = botaoBoot.read();
+  }
+
+  if (botaoBoot.fell()) 
+  {
+    tela++;
+    if (tela > 2)
+    {
+      tela = 0;
+      houveTroca = true;
+    }
+  }
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
