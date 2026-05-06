@@ -119,16 +119,4 @@ void tratarJsonComando(const String &mensagem)
       alterarCorLedRGB(vermelho, verde, azul);
     }
   }
-  if(doc["lampada"].is<JsonObject>())
-  {
-    if(!doc["lampada"].is<String>())
-    {
-      debugErro("JSON INVALIDO. use true ou false");
-      return;
-    }
-    else
-    {
-     estadoLed = doc["lampada"].as<bool>();
-    }
-  }
 }
