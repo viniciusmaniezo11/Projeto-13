@@ -63,9 +63,9 @@ const char *TOPICOS_PUBLICAR[] = {
 const int TOTAL_TOPICOS_PUBLICAR = 3;
 
 const char *TOPICOS_RECEBER[] = {
-    "senai134/Vinicius/esp32/comando",
-    "senai134/Vinicius/esp32/config",
-    "senai134/Vinicius/esp32/display"};
+    "senai134/consultorio1/esp32/comando",
+    "senai134/consultorio1/esp32/config",
+    "senai134/consultorio1/esp32/display"};
 
 const int TOTAL_TOPICOS_RECEBER = 3;
 
