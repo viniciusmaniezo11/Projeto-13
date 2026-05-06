@@ -1,0 +1,72 @@
+//! debugManager.cpp
+
+#include <Arduino.h>
+#include "debugManager.h"
+#include "secrets.h"
+
+int nivelDebugAtual = DEBUG_NIVEL_INICIAL;
+
+void debugErro(const String &mensagem)
+{
+    if (nivelDebugAtual >= DEBUG_ERRO)
+    {
+        Serial.print("[ERRO]");
+        Serial.println(mensagem);
+    }
+}
+
+void debugErroSemLinha(const String &mensagem)
+{
+    if (nivelDebugAtual >= DEBUG_ERRO)
+    {
+        Serial.print(mensagem);
+    }
+}
+
+void debugInfo(const String &mensagem)
+{
+    if (nivelDebugAtual >= DEBUG_TUDO)
+    {
+        Serial.print("[INFO]");
+        Serial.println(mensagem);
+    }
+}
+
+void debugInfoSemLinha(const String &mensagem)
+{
+    if (nivelDebugAtual >= DEBUG_TUDO)
+    {
+        Serial.print(mensagem);
+    }
+}
+
+void configurarDebug()
+{
+    Serial.begin(9600);
+    delay(1000);
+
+    pinMode(DEBUG_HABILITA_DEBUG_COMPLETO, INPUT_PULLUP);
+
+    if (digitalRead(DEBUG_HABILITA_DEBUG_COMPLETO) == LOW)
+    {
+        nivelDebugAtual = DEBUG_TUDO;
+    }
+    else
+    {
+        nivelDebugAtual = DEBUG_NIVEL_INICIAL;
+    }
+
+    for (int i = 0; i < 5; i++)
+        debugInfoSemLinha("");
+
+    debugInfo("========================");
+    debugInfo(" ESP32 iniciado");
+    debugInfo("Sistema de debug ativo");
+    if (nivelDebugAtual == DEBUG_ERRO)
+        debugInfo(" Debug iniciado em modo apenas erro");
+    else
+        debugInfo(" Debug inciado em modo completo");
+    debugInfo("========================");
+}
+
+// todo: criar a função obterNivelDebugAtual
