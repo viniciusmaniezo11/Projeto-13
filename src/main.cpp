@@ -65,6 +65,12 @@ void loop()
   garantirWiFiConectado();
   garantirMQTTConectado();
   loopMQTT();
+
+   botaoBoot.update();
+  static bool estadoBotaoBoot = 1;
+  bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
+  static bool houveTroca = false;
+
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
@@ -93,18 +99,18 @@ void tratarMensagemRecebida(const char *topico, const String &mensagem)
 void configurarLedRGB()
 {
   ledRGB.begin();
-  ledRGB.setBrightness(80); // colocamos a qnt de brilho para o led de 0 a 255
+  ledRGB.setBrightness(80); 
   ledRGB.clear();
-  ledRGB.show(); // atualiza o estado led (mudar de cor, etc)
+  ledRGB.show(); 
   debugInfo("LED RGB configurado no GPIO " + String(PINO_LED_RGB));
 }
 
 void alterarCorLedRGB(int vermelho, int verde, int azul)
 {
-  vermelho = constrain(vermelho, 0, 255); // constrain() limita o valor do vermelho para no minimo 0 e no maximo 255
+  vermelho = constrain(vermelho, 0, 255); 
   verde = constrain(verde, 0, 255);
   azul = constrain(azul, 0, 255);
-  ledRGB.setPixelColor(0, ledRGB.Color(vermelho, verde, azul)); // primeiro coloca o led que queremos mecher (0), e dps as cores
+  ledRGB.setPixelColor(0, ledRGB.Color(vermelho, verde, azul));
   ledRGB.show();
 
   debugInfo("Cor aplicada no LED RGB");
