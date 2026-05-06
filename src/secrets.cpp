@@ -15,7 +15,7 @@ const int MQTT_PORTA = 8883;
 
 const char *MQTT_CLIENT_ID = "eps32_vinicius123";
 
-const char *MQTT_USUARIO = "Vinicius";
+const char *MQTT_USUARIO = "ViniciusM";
 const char *MQTT_SENHA = "Senai@134";
 
 const bool MQTT_USAR_TLS = true; // modo de conexao sem segurança
@@ -63,9 +63,9 @@ const char *TOPICOS_PUBLICAR[] = {
 const int TOTAL_TOPICOS_PUBLICAR = 3;
 
 const char *TOPICOS_RECEBER[] = {
-    "senai134/Vinicius/esp32/comando",
-    "senai134/Vinicius/esp32/config",
-    "senai134/Vinicius/esp32/display"};
+    "senai134/consultorio1/esp32/comando",
+    "senai134/consultorio1/esp32/config",
+    "senai134/consultorio1/esp32/display"};
 
 const int TOTAL_TOPICOS_RECEBER = 3;
 
