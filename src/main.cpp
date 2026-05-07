@@ -10,6 +10,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
+#include <Bounce2.h>
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "deBugManager.h"
@@ -19,7 +20,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 uint8_t tela = 0;
 String resposta;
 
-const char botaoBoot = 0;
+Bounce botaoBoot = Bounce();
 
 const int PINO_LED_RGB = 48;
 const int PINO_LAMPADA = 12;
@@ -46,8 +47,8 @@ void atualizarTela();
 
 void setup()
 {
-  pinMode(botaoBoot, INPUT_PULLUP);
   pinMode(PINO_LAMPADA, OUTPUT);
+  botaoBoot.attach(0, INPUT_PULLUP);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
@@ -64,9 +65,30 @@ void loop()
   garantirMQTTConectado();
   loopMQTT();
 
+  unsigned long tempo = botaoBoot.previousDuration();
+  unsigned long tempo2 = botaoBoot.currentDuration();
+
+  botaoBoot.update();
   static bool estadoBotaoBoot = 1;
   bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
   static bool houveTroca = false;
+
+  if (botaoBoot.changed())
+  {
+    estadoBotaoBoot = botaoBoot.read();
+  }
+
+  if (botaoBoot.fell())
+  {
+    lcd.clear();
+    tela++;
+    if (tela > 2)
+    {
+      tela = 0;
+    }
+    houveTroca = true;
+  }
+  atualizarTela();
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
@@ -158,7 +180,7 @@ void tratarJsonComando(const String &mensagem)
     alterarEstadoLampada(estadoLampada);
   }
 
-  if(!doc["estadoConsultorio"].is<int>())
+  if(!doc["estadoConsultorio"].is<int>()) //* Tratamento estado do consultorio.
   {
     debugErro("JSON Inválido.");
     return;
@@ -210,6 +232,7 @@ void tratarJsonComando(const String &mensagem)
       lcd.print("Thiago Oliveira");
     }
   }
+  // se voce receber algo do topico vai enviar isso para alguma tela? se sim sera necessario  atualizar os valores das variaveis de cada tela
 }
 
 void alterarEstadoLampada(bool estadoLampada)
@@ -217,8 +240,9 @@ void alterarEstadoLampada(bool estadoLampada)
   digitalWrite(PINO_LAMPADA, estadoLampada);
 }
 
-void AtualizarTela()
+void atualizarTela()
 {
+  
   switch (tela)
   {
   case 0:
@@ -230,5 +254,10 @@ void AtualizarTela()
   case 2:
     tela3();
     break;
+
+  default:
+  tela = 0;
+  tela1();
+  break;
   }
 }
