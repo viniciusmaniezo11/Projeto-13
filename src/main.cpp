@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <LiquidCrystal_I2C>
+#include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
 #include "WiFiManager.h"
 #include "MQTTManager.h"
@@ -68,7 +68,7 @@ void loop()
   garantirMQTTConectado();
   loopMQTT();
 
-   botaoBoot.update();
+ // botaoBoot.update();
   static bool estadoBotaoBoot = 1;
   bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
   static bool houveTroca = false;
@@ -167,6 +167,7 @@ void tratarJsonComando(const String &mensagem)
 
 void alterarEstadoLampada(bool estadoLampada)
 {
+  debugInfo("lampada: " + String(estadoLampada));
   digitalWrite(PINO_LAMPADA, estadoLampada);
 }
 
