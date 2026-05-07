@@ -13,7 +13,7 @@ const bool USAR_AWS_IOT = false;
 const char *MQTT_BROKER = "1faa95b83c604802ae08d30166a81f03.s1.eu.hivemq.cloud";
 const int MQTT_PORTA = 8883;
 
-const char *MQTT_CLIENT_ID = "eps32_vinicius123";
+const char *MQTT_CLIENT_ID = "eps32_ViniciusM";
 
 const char *MQTT_USUARIO = "ViniciusM";
 const char *MQTT_SENHA = "Senai@134";

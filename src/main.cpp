@@ -1,21 +1,20 @@
+/**
+ * Nome: Vinicius Atanasio de Sousa Alves, Vinicius Maniezo Alves, Luiz Gustavo, Fabricio Honorato
+ * data: 24/04/2026
+ * projeto : conexao MQTT
+ * descrição: MQTT
+ * versão: 1.0
+ */
+
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <LiquidCrystal_I2C>
+#include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
 #include "WiFiManager.h"
 #include "MQTTManager.h"
 #include "deBugManager.h"
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
-
-
-/**
- * Nome: Vinicius Atanasio de Sousa Alves, Vinicius Maniezo Alves, Luiz Gustavo, Fabricio Honorato
- * data: 24/04/2026
- * projeto : conexao MQTT
- * descrição: MQTT 
- * versão: 1.0
- */
 
 uint8_t tela = 0;
 String resposta;
@@ -45,12 +44,10 @@ void tela2();
 void tela3();
 void atualizarTela();
 
-const char *URL_API = "https://api.weatherapi.com/v1/current.json?key=c11009a9d28749e6af4164128261604&q=Sao%20Caetano%20do%20Sul&lang=pt";
-
-
 void setup()
 {
   pinMode(botaoBoot, INPUT_PULLUP);
+  pinMode(PINO_LAMPADA, OUTPUT);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
@@ -59,7 +56,6 @@ void setup()
   conectarMQTT();
   lcd.init();
   lcd.backlight();
-
 }
 
 void loop()
@@ -68,11 +64,9 @@ void loop()
   garantirMQTTConectado();
   loopMQTT();
 
-   botaoBoot.update();
   static bool estadoBotaoBoot = 1;
   bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
   static bool houveTroca = false;
-
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
@@ -101,15 +95,15 @@ void tratarMensagemRecebida(const char *topico, const String &mensagem)
 void configurarLedRGB()
 {
   ledRGB.begin();
-  ledRGB.setBrightness(80); 
+  ledRGB.setBrightness(80);
   ledRGB.clear();
-  ledRGB.show(); 
+  ledRGB.show();
   debugInfo("LED RGB configurado no GPIO " + String(PINO_LED_RGB));
 }
 
 void alterarCorLedRGB(int vermelho, int verde, int azul)
 {
-  vermelho = constrain(vermelho, 0, 255); 
+  vermelho = constrain(vermelho, 0, 255);
   verde = constrain(verde, 0, 255);
   azul = constrain(azul, 0, 255);
   ledRGB.setPixelColor(0, ledRGB.Color(vermelho, verde, azul));
@@ -135,8 +129,8 @@ void tratarJsonComando(const String &mensagem)
 
   if (doc["led"].is<JsonObject>()) //* Tratamento LED RGB.
   {
-    if (!doc["led"]["r"].is<int>() || 
-        !doc["led"]["g"].is<int>() || 
+    if (!doc["led"]["r"].is<int>() ||
+        !doc["led"]["g"].is<int>() ||
         !doc["led"]["b"].is<int>())
     {
       debugErro("JSON INVALIDO. use led.r, led.g, led.b");
@@ -163,6 +157,59 @@ void tratarJsonComando(const String &mensagem)
 
     alterarEstadoLampada(estadoLampada);
   }
+
+  if(!doc["estadoConsultorio"].is<int>())
+  {
+    debugErro("JSON Inválido.");
+    return;
+  }
+  else
+  {
+    int estadoConsultorio = doc["estadoConsultorio"].as<int>();
+
+    if(estadoConsultorio == 1) //* Consultorio Disponivel.
+    {
+      alterarCorLedRGB(0, 255, 0);
+      alterarEstadoLampada(1);
+
+      lcd.setCursor(0, 0);
+      lcd.print("Consultorio:");
+      lcd.setCursor(0, 1);
+      lcd.print("Disponivel");
+      lcd.setCursor(0, 2);
+      lcd.print("Doutor:");
+      lcd.setCursor(0, 3);
+      lcd.print("Thiago Oliveira");
+    }
+    else if (estadoConsultorio == 2) //* Consultorio Indisponivel
+    {
+      alterarCorLedRGB(255, 0 , 0);
+      alterarEstadoLampada(0);
+
+      lcd.setCursor(0, 0);
+      lcd.print("Consultorio:");
+      lcd.setCursor(0, 1);
+      lcd.print("Indisponivel");
+      lcd.setCursor(0, 2);
+      lcd.print("Doutor:");
+      lcd.setCursor(0, 3);
+      lcd.print("Thiago Oliveira");
+    }
+    else //* Consultorio Fechado.
+    {
+      alterarCorLedRGB(200, 120, 0);
+      alterarEstadoLampada(0);
+
+      lcd.setCursor(0, 0);
+      lcd.print("Consultorio:");
+      lcd.setCursor(0, 1);
+      lcd.print("Fechado");
+      lcd.setCursor(0, 2);
+      lcd.print("Doutor:");
+      lcd.setCursor(0, 3);
+      lcd.print("Thiago Oliveira");
+    }
+  }
 }
 
 void alterarEstadoLampada(bool estadoLampada)
@@ -184,70 +231,4 @@ void AtualizarTela()
     tela3();
     break;
   }
-}
-
-void tela1()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-  if(!erro)
-  {
-    lcd.setCursor(0,0);
-    lcd.print("Consultório disponível");
-
-    lcd.setCursor(0,2);
-    lcd.print("Doutor Thiago");
-
-    if(doc["location"]["localtime"].is<JsonVariant>())
-    {
-      const char *hora = doc["location"]["localtime"];
-      lcd.setCursor(0,3);
-      lcd.printf("%d:%d", hora);
-    }
-  }
-}
-
-void tela2()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-   if(!erro)
-   {
-      lcd.setCursor(0,0);
-      lcd.print("Consultório ocupado");
-
-      lcd.setCursor(0,2);
-      lcd.print("Doutor Thiago");
-
-      if(doc["location"]["localtime"].is<JsonVariant>())
-      {
-         const char *hora = doc["location"]["localtime"];
-         lcd.setCursor(0,3);
-         lcd.printf("%d:%d", hora);
-      }
-   }
-}
-
-void tela3()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-   if(!erro)
-   {
-      lcd.setCursor(0,0);
-      lcd.print("Consultório fechado");
-
-      lcd.setCursor(0,2);
-      lcd.print("Sem doutor");
-
-      if(doc["location"]["localtime"].is<JsonVariant>())
-      {
-         const char *hora = doc["location"]["localtime"];
-         lcd.setCursor(0,3);
-         lcd.printf("%d:%d", hora);
-      }
-   }
 }
