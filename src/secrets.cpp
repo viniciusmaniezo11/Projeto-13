@@ -13,9 +13,9 @@ const bool USAR_AWS_IOT = false;
 const char *MQTT_BROKER = "1faa95b83c604802ae08d30166a81f03.s1.eu.hivemq.cloud";
 const int MQTT_PORTA = 8883;
 
-const char *MQTT_CLIENT_ID = "eps32_vinicius123";
+const char *MQTT_CLIENT_ID = "eps32_Vinicius";
 
-const char *MQTT_USUARIO = "ViniciusM";
+const char *MQTT_USUARIO = "Vinicius";
 const char *MQTT_SENHA = "Senai@134";
 
 const bool MQTT_USAR_TLS = true; // modo de conexao sem segurança
@@ -56,7 +56,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 )EOF";
 
 const char *TOPICOS_PUBLICAR[] = {
-    "senai134/esp32/status",
+    "senai134/atendimento/esp32/comando",
     "senai134/esp32/log",
     "senai134/esp32/resposta"};
 

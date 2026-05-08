@@ -1,33 +1,36 @@
-#include <Arduino.h>
-#include <Adafruit_NeoPixel.h>
-#include <LiquidCrystal_I2C.h>
-#include <ArduinoJson.h>
-#include "WiFiManager.h"
-#include "MQTTManager.h"
-#include "deBugManager.h"
-
-LiquidCrystal_I2C lcd(0x27, 20, 4);
-
 
 /**
  * Nome: Vinicius Atanasio de Sousa Alves, Vinicius Maniezo Alves, Luiz Gustavo, Fabricio Honorato
  * data: 24/04/2026
  * projeto : conexao MQTT
- * descrição: MQTT 
+ * descrição: MQTT
  * versão: 1.0
  */
+
+#include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
+#include <LiquidCrystal_I2C.h>
+#include <ArduinoJson.h>
+#include <Bounce2.h>
+#include "WiFiManager.h"
+#include "MQTTManager.h"
+#include "deBugManager.h"
+
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 uint8_t tela = 0;
 String resposta;
 
-const char botaoBoot = 0;
-
 const int PINO_LED_RGB = 48;
 const int PINO_LAMPADA = 12;
+const int PINO_BOTAO = 0;
 const int QUANTIDADE_LEDS = 1;
 const char TOPICO_COMANDO[] = "senai134/consultorio1/esp32/comando";
+const char TOPICO_ENVIO[] = "senai134/consultorio1/esp32/comando";
 const int estadoPino = 12;
 bool estadoLed = 0;
+int estadoBotao = 0;
 
 Adafruit_NeoPixel ledRGB(
     QUANTIDADE_LEDS,
@@ -39,18 +42,13 @@ void configurarLedRGB();
 void alterarEstadoLampada(bool estadoLampada);
 void alterarCorLedRGB(int vermelho, int verde, int azul);
 void tratarJsonComando(const String &mensagem);
-
-void tela1();
-void tela2();
-void tela3();
 void atualizarTela();
-
-const char *URL_API = "https://api.weatherapi.com/v1/current.json?key=c11009a9d28749e6af4164128261604&q=Sao%20Caetano%20do%20Sul&lang=pt";
-
+void enviarJSON(int estadoBotao);
 
 void setup()
 {
-  pinMode(botaoBoot, INPUT_PULLUP);
+  pinMode(PINO_LAMPADA, OUTPUT);
+  pinMode(PINO_BOTAO, INPUT_PULLUP);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
@@ -59,7 +57,8 @@ void setup()
   conectarMQTT();
   lcd.init();
   lcd.backlight();
-
+  lcd.print("TESTE");
+  digitalWrite(PINO_LAMPADA, HIGH);
 }
 
 void loop()
@@ -67,12 +66,48 @@ void loop()
   garantirWiFiConectado();
   garantirMQTTConectado();
   loopMQTT();
+   
 
- // botaoBoot.update();
-  static bool estadoBotaoBoot = 1;
-  bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
-  static bool houveTroca = false;
+  bool estadoAtualBotaoBoot = digitalRead(PINO_BOTAO);
+  static bool estadoAnteriorBotaoBoot = 0;
+  static int estadotela = 1;
+  static unsigned long tempoUltimoClickBotao = 0;
+  static bool cliqueLongoExecutado = false;
 
+  if (!estadoAtualBotaoBoot)
+  {
+    if (millis() - tempoUltimoClickBotao >= 5000)
+    {
+      if (!cliqueLongoExecutado)
+      {
+        estadoBotao = 2;
+        enviarJSON(estadoBotao);
+
+        cliqueLongoExecutado = true;
+      }
+    }
+  }
+  else
+  {
+    if (!estadoAnteriorBotaoBoot)
+    {
+      if (!cliqueLongoExecutado)
+      {
+        if (estadoBotao == 0)
+        {
+          estadoBotao = 1;
+        }
+        else
+        {
+          estadoBotao = 0;
+        }
+        enviarJSON(estadoBotao);
+      }
+    }
+    tempoUltimoClickBotao = millis();
+    cliqueLongoExecutado = false;
+  }
+  estadoAnteriorBotaoBoot = estadoAtualBotaoBoot;
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
@@ -101,15 +136,15 @@ void tratarMensagemRecebida(const char *topico, const String &mensagem)
 void configurarLedRGB()
 {
   ledRGB.begin();
-  ledRGB.setBrightness(80); 
+  ledRGB.setBrightness(80);
   ledRGB.clear();
-  ledRGB.show(); 
+  ledRGB.show();
   debugInfo("LED RGB configurado no GPIO " + String(PINO_LED_RGB));
 }
 
 void alterarCorLedRGB(int vermelho, int verde, int azul)
 {
-  vermelho = constrain(vermelho, 0, 255); 
+  vermelho = constrain(vermelho, 0, 255);
   verde = constrain(verde, 0, 255);
   azul = constrain(azul, 0, 255);
   ledRGB.setPixelColor(0, ledRGB.Color(vermelho, verde, azul));
@@ -135,8 +170,8 @@ void tratarJsonComando(const String &mensagem)
 
   if (doc["led"].is<JsonObject>()) //* Tratamento LED RGB.
   {
-    if (!doc["led"]["r"].is<int>() || 
-        !doc["led"]["g"].is<int>() || 
+    if (!doc["led"]["r"].is<int>() ||
+        !doc["led"]["g"].is<int>() ||
         !doc["led"]["b"].is<int>())
     {
       debugErro("JSON INVALIDO. use led.r, led.g, led.b");
@@ -152,103 +187,93 @@ void tratarJsonComando(const String &mensagem)
     }
   }
 
-  if (!doc["lampada"].is<bool>()) //* Tratamento lampada.
+  if (doc.containsKey("lampada"))
   {
-    debugErro("JSON INVALIDO. use true ou false");
+    if (!doc["lampada"].is<bool>()) //* Tratamento lampada.
+    {
+      debugErro("JSON INVALIDO. use true ou false");
+      return;
+    }
+    else
+    {
+      bool estadoLampada = doc["lampada"].as<bool>();
+
+      alterarEstadoLampada(estadoLampada);
+    }
+  }
+
+  if (!doc["estadoConsultorio"].is<int>()) //* Tratamento estado do consultorio.
+  {
+    debugErro("JSON Inválido.");
     return;
   }
   else
   {
-    bool estadoLampada = doc["lampada"].as<bool>();
+    int estadoConsultorio = doc["estadoConsultorio"].as<int>();
 
-    alterarEstadoLampada(estadoLampada);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Consultorio:");
+    lcd.setCursor(0, 2);
+    lcd.print("Doutor:");
+
+    if (estadoConsultorio == 1) //* Consultorio Disponivel.
+    {
+      alterarCorLedRGB(0, 255, 0);
+      digitalWrite(PINO_LAMPADA, HIGH);
+
+      lcd.setCursor(0, 1);
+      lcd.print("Disponivel");
+      lcd.setCursor(0, 3);
+      lcd.print("Thiago Oliveira");
+    }
+    else if (estadoConsultorio == 2) //* Consultorio Indisponivel
+    {
+      alterarCorLedRGB(255, 0, 0);
+      digitalWrite(PINO_LAMPADA, LOW);
+
+      lcd.setCursor(0, 1);
+      lcd.print("Indisponivel");
+      lcd.setCursor(0, 3);
+      lcd.print("Thiago Oliveira");
+    }
+    else //* Consultorio Fechado.
+    {
+      alterarCorLedRGB(200, 120, 0);
+      digitalWrite(PINO_LAMPADA, LOW);
+
+      lcd.setCursor(0, 1);
+      lcd.print("Fechado");
+      lcd.setCursor(0, 3);
+      lcd.print("Fora");
+    }
   }
+  // se voce receber algo do topico vai enviar isso para alguma tela? se sim sera necessario  atualizar os valores das variaveis de cada tela
 }
 
 void alterarEstadoLampada(bool estadoLampada)
 {
-  debugInfo("lampada: " + String(estadoLampada));
   digitalWrite(PINO_LAMPADA, estadoLampada);
 }
 
-void AtualizarTela()
+void enviarJSON(int estadoBotao)
 {
-  switch (tela)
+  JsonDocument doc;
+  char buffer[64];
+
+  switch (estadoBotao)
   {
-  case 0:
-    tela1();
+  case 0: //* Consultorio Disponivel
+    doc["estadoConsultorio"] = 1;
     break;
-  case 1:
-    tela2();
+  case 1: //* Consultorio Indisponivel
+    doc["estadoConsultorio"] = 2;
     break;
-  case 2:
-    tela3();
+  case 2: //* Consultorio Fechado
+    doc["estadoConsultorio"] = 3;
     break;
   }
-}
 
-void tela1()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-  if(!erro)
-  {
-    lcd.setCursor(0,0);
-    lcd.print("Consultório disponível");
-
-    lcd.setCursor(0,2);
-    lcd.print("Doutor Thiago");
-
-    if(doc["location"]["localtime"].is<JsonVariant>())
-    {
-      const char *hora = doc["location"]["localtime"];
-      lcd.setCursor(0,3);
-      lcd.printf("%d:%d", hora);
-    }
-  }
-}
-
-void tela2()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-   if(!erro)
-   {
-      lcd.setCursor(0,0);
-      lcd.print("Consultório ocupado");
-
-      lcd.setCursor(0,2);
-      lcd.print("Doutor Thiago");
-
-      if(doc["location"]["localtime"].is<JsonVariant>())
-      {
-         const char *hora = doc["location"]["localtime"];
-         lcd.setCursor(0,3);
-         lcd.printf("%d:%d", hora);
-      }
-   }
-}
-
-void tela3()
-{
-   JsonDocument doc;
-   DeserializationError erro = deserializeJson(doc, resposta);
-
-   if(!erro)
-   {
-      lcd.setCursor(0,0);
-      lcd.print("Consultório fechado");
-
-      lcd.setCursor(0,2);
-      lcd.print("Sem doutor");
-
-      if(doc["location"]["localtime"].is<JsonVariant>())
-      {
-         const char *hora = doc["location"]["localtime"];
-         lcd.setCursor(0,3);
-         lcd.printf("%d:%d", hora);
-      }
-   }
+  serializeJson(doc, buffer);
+  publicarMensagem(TOPICO_ENVIO, buffer);
 }
