@@ -56,7 +56,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 )EOF";
 
 const char *TOPICOS_PUBLICAR[] = {
-    "senai134/esp32/status",
+    "senai134/atendimento/esp32/comando",
     "senai134/esp32/log",
     "senai134/esp32/resposta"};
 

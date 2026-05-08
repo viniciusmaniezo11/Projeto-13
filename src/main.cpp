@@ -20,14 +20,15 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 uint8_t tela = 0;
 String resposta;
 
-Bounce botaoBoot = Bounce();
-
 const int PINO_LED_RGB = 48;
 const int PINO_LAMPADA = 12;
+const int PINO_BOTAO = 0;
 const int QUANTIDADE_LEDS = 1;
 const char TOPICO_COMANDO[] = "senai134/consultorio1/esp32/comando";
+const char TOPICO_ENVIO[] = "senai134/atendimento/esp32/comando";
 const int estadoPino = 12;
 bool estadoLed = 0;
+int estadoBotao = 0;
 
 Adafruit_NeoPixel ledRGB(
     QUANTIDADE_LEDS,
@@ -39,16 +40,13 @@ void configurarLedRGB();
 void alterarEstadoLampada(bool estadoLampada);
 void alterarCorLedRGB(int vermelho, int verde, int azul);
 void tratarJsonComando(const String &mensagem);
-
-void tela1();
-void tela2();
-void tela3();
 void atualizarTela();
+void enviarJSON(int estadoBotao);
 
 void setup()
 {
   pinMode(PINO_LAMPADA, OUTPUT);
-  botaoBoot.attach(0, INPUT_PULLUP);
+  pinMode(PINO_BOTAO, INPUT_PULLUP);
   configurarDebug();
   configurarLedRGB();
   conectarWiFi();
@@ -65,30 +63,46 @@ void loop()
   garantirMQTTConectado();
   loopMQTT();
 
-  unsigned long tempo = botaoBoot.previousDuration();
-  unsigned long tempo2 = botaoBoot.currentDuration();
+  bool estadoAtualBotaoBoot = digitalRead(PINO_BOTAO);
+  static bool estadoAnteriorBotaoBoot = 0;
+  static int estadotela = 1;
+  static unsigned long tempoUltimoClickBotao = 0;
+  static bool cliqueLongoExecutado = false;
 
-  botaoBoot.update();
-  static bool estadoBotaoBoot = 1;
-  bool estadoAnteriorBotaoBoot = estadoBotaoBoot;
-  static bool houveTroca = false;
-
-  if (botaoBoot.changed())
+  if (!estadoAtualBotaoBoot)
   {
-    estadoBotaoBoot = botaoBoot.read();
-  }
-
-  if (botaoBoot.fell())
-  {
-    lcd.clear();
-    tela++;
-    if (tela > 2)
+    if (millis() - tempoUltimoClickBotao >= 5000)
     {
-      tela = 0;
+      if (!cliqueLongoExecutado)
+      {
+        estadoBotao = 2;
+        enviarJSON(estadoBotao);
+
+        cliqueLongoExecutado = true;
+      }
     }
-    houveTroca = true;
   }
-  atualizarTela();
+  else
+  {
+    if (!estadoAnteriorBotaoBoot)
+    {
+      if (!cliqueLongoExecutado)
+      {
+        if (estadoBotao == 0)
+        {
+          estadoBotao = 1;
+        }
+        else
+        {
+          estadoBotao = 0;
+        }
+        enviarJSON(estadoBotao);
+      }
+    }
+    tempoUltimoClickBotao = millis();
+    cliqueLongoExecutado = false;
+  }
+  estadoAnteriorBotaoBoot = estadoAtualBotaoBoot;
 }
 
 void tratarMensagemRecebida(const char *topico, const String &mensagem)
@@ -168,19 +182,22 @@ void tratarJsonComando(const String &mensagem)
     }
   }
 
-  if (!doc["lampada"].is<bool>()) //* Tratamento lampada.
+  if (doc.containsKey("lampada"))
   {
-    debugErro("JSON INVALIDO. use true ou false");
-    return;
-  }
-  else
-  {
-    bool estadoLampada = doc["lampada"].as<bool>();
+    if (!doc["lampada"].is<bool>()) //* Tratamento lampada.
+    {
+      debugErro("JSON INVALIDO. use true ou false");
+      return;
+    }
+    else
+    {
+      bool estadoLampada = doc["lampada"].as<bool>();
 
-    alterarEstadoLampada(estadoLampada);
+      alterarEstadoLampada(estadoLampada);
+    }
   }
 
-  if(!doc["estadoConsultorio"].is<int>()) //* Tratamento estado do consultorio.
+  if (!doc["estadoConsultorio"].is<int>()) //* Tratamento estado do consultorio.
   {
     debugErro("JSON Inválido.");
     return;
@@ -189,31 +206,29 @@ void tratarJsonComando(const String &mensagem)
   {
     int estadoConsultorio = doc["estadoConsultorio"].as<int>();
 
-    if(estadoConsultorio == 1) //* Consultorio Disponivel.
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Consultorio:");
+    lcd.setCursor(0, 2);
+    lcd.print("Doutor:");
+
+    if (estadoConsultorio == 1) //* Consultorio Disponivel.
     {
       alterarCorLedRGB(0, 255, 0);
       alterarEstadoLampada(1);
 
-      lcd.setCursor(0, 0);
-      lcd.print("Consultorio:");
       lcd.setCursor(0, 1);
       lcd.print("Disponivel");
-      lcd.setCursor(0, 2);
-      lcd.print("Doutor:");
       lcd.setCursor(0, 3);
       lcd.print("Thiago Oliveira");
     }
     else if (estadoConsultorio == 2) //* Consultorio Indisponivel
     {
-      alterarCorLedRGB(255, 0 , 0);
+      alterarCorLedRGB(255, 0, 0);
       alterarEstadoLampada(0);
 
-      lcd.setCursor(0, 0);
-      lcd.print("Consultorio:");
       lcd.setCursor(0, 1);
       lcd.print("Indisponivel");
-      lcd.setCursor(0, 2);
-      lcd.print("Doutor:");
       lcd.setCursor(0, 3);
       lcd.print("Thiago Oliveira");
     }
@@ -222,14 +237,10 @@ void tratarJsonComando(const String &mensagem)
       alterarCorLedRGB(200, 120, 0);
       alterarEstadoLampada(0);
 
-      lcd.setCursor(0, 0);
-      lcd.print("Consultorio:");
       lcd.setCursor(0, 1);
       lcd.print("Fechado");
-      lcd.setCursor(0, 2);
-      lcd.print("Doutor:");
       lcd.setCursor(0, 3);
-      lcd.print("Thiago Oliveira");
+      lcd.print("Fora");
     }
   }
   // se voce receber algo do topico vai enviar isso para alguma tela? se sim sera necessario  atualizar os valores das variaveis de cada tela
@@ -240,24 +251,24 @@ void alterarEstadoLampada(bool estadoLampada)
   digitalWrite(PINO_LAMPADA, estadoLampada);
 }
 
-void atualizarTela()
+void enviarJSON(int estadoBotao)
 {
-  
-  switch (tela)
-  {
-  case 0:
-    tela1();
-    break;
-  case 1:
-    tela2();
-    break;
-  case 2:
-    tela3();
-    break;
+  JsonDocument doc;
+  char buffer[64];
 
-  default:
-  tela = 0;
-  tela1();
-  break;
+  switch (estadoBotao)
+  {
+  case 0: //* Consultorio Disponivel
+    doc["estadoConsultorio"] = 1;
+    break;
+  case 1: //* Consultorio Indisponivel
+    doc["estadoConsultorio"] = 2;
+    break;
+  case 2: //* Consultorio Fechado
+    doc["estadoConsultorio"] = 3;
+    break;
   }
+
+  serializeJson(doc, buffer);
+  publicarMensagem(TOPICO_ENVIO, buffer);
 }
