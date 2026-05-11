@@ -245,7 +245,7 @@ void tratarJsonComando(const String &mensagem)
       lcd.setCursor(0, 1);
       lcd.print("Fechado");
       lcd.setCursor(0, 3);
-      lcd.print("Fora");
+      lcd.print("Sem Doutor");
     }
   }
   // se voce receber algo do topico vai enviar isso para alguma tela? se sim sera necessario  atualizar os valores das variaveis de cada tela
